@@ -44,4 +44,43 @@ module.exports = {
         : dataSources.LaunchAPI.getLaunchesByIds({ launchIds }) || [];
     },
   },
+  Mutation: {
+    login: async (_, { email }, { dataSources }) => {
+      const user = await dataSources.UserAPI.findOrCreateUser({ email });
+      if (user) {
+        user.token = Buffer.from(email).toString("base64");
+        return user;
+      }
+    },
+    bookTrips: async (_, { launchIds }, { dataSources }) => {
+      const results = await dataSources.UserAPI.bookTrips({ launchIds });
+      const launches = await dataSources.LaunchAPI.getLaunchesByIds({
+        launchIds,
+      });
+      return {
+        success: results && results.length === launchIds.length,
+        message:
+          results.length === launchIds.length
+            ? "Trips booked successfully"
+            : `The following launches couldn't be booked: ${launchIds.filter(
+                (id) => !results.includes(id)
+              )}`,
+        launches,
+      };
+    },
+    cancelTrip: async (_, { launchId }, { dataSources }) => {
+      const result = await dataSources.UserAPI.cancelTrip({ launchId });
+      if (!result)
+        return {
+          success: false,
+          message: "Failed to cancel trip",
+        };
+      const launch = await dataSources.LaunchAPI.getLaunchById({ launchId });
+      return {
+        success: true,
+        message: "Trip cancelled",
+        launches: [launch],
+      };
+    },
+  },
 };
